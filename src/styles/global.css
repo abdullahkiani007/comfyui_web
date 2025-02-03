@@ -1,0 +1,30 @@
+/* In src/styles/global.css */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  font-family: 'Poppins', sans-serif; /* Default font for body text */
+  font-weight: 500;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Clash Display', sans-serif; /* Font for headings */
+}
+
+.clash-display {
+  font-family: 'Clash Display', sans-serif; /* Font for headings */
+}
+
+@media (min-width: 1652px) {
+  .coreValues {
+    width: 83%;
+  }
+}
