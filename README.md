@@ -1,6 +1,4 @@
-Here’s your full **Markdown (MD) file** for the **Nxtof** template:
 
-```md
 # Nxtof — Modern Web Development Starter Template
 
 This development starter template is the ultimate solution to help you get started on your project in no time, without the hassle of setting up and configuring your development environment from scratch.
