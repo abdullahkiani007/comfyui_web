@@ -36,6 +36,37 @@ export function ComfyUIGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const pollJobStatus = (jobId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`https://api.runpod.ai/v2/1ogep048h90n35/status/${jobId}`, {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error(`Polling failed: ${res.status}`);
+        }
+
+        const jobData: any = await res.json();
+
+        if (jobData.status === 'COMPLETED') {
+          setResponse(jobData);
+          clearInterval(interval);
+        }
+
+        if (jobData.status === 'FAILED') {
+          setError('Job failed');
+          clearInterval(interval);
+        }
+      } catch (err) {
+        clearInterval(interval);
+        setError(err instanceof Error ? err.message : 'Polling error');
+      }
+    }, 3000); // Poll every 3 seconds
+  };
+
   const validateJSON = (jsonString: string): boolean => {
     try {
       JSON.parse(jsonString);
@@ -63,18 +94,16 @@ export function ComfyUIGenerator() {
     setResponse(null);
 
     try {
-      // Parse the workflow to ensure it's valid JSON
       const parsedWorkflow = JSON.parse(workflow);
 
-      // Simulate RunPod API call
-      // In a real implementation, you would replace this with your actual RunPod endpoint
-      const runpodResponse = await fetch('/api/runpod', {
+      const runpodResponse = await fetch('https://api.runpod.ai/v2/1ogep048h90n35/run', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
         },
         body: JSON.stringify({
-          workflow: parsedWorkflow
+          parsedWorkflow
         })
       });
 
@@ -83,7 +112,16 @@ export function ComfyUIGenerator() {
       }
 
       const data: any = await runpodResponse.json();
-      setResponse(data);
+      const jobId = data.id;
+      const initialStatus = data.status;
+
+      if (initialStatus === 'IN_QUEUE' || initialStatus === 'IN_PROGRESS') {
+        pollJobStatus(jobId); // 🔁 Start polling
+      } else if (initialStatus === 'COMPLETED') {
+        setResponse(data);
+      } else {
+        setError(`Unexpected status: ${initialStatus}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process workflow');
     } finally {

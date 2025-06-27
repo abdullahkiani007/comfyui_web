@@ -45,6 +45,7 @@
     "react-lottie-player": "^2.1.0",
     "react-phone-input-2": "^2.15.1",
     "react-router-dom": "^7.1.0",
+    "runpod-sdk": "^1.1.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7"
   },
