@@ -1,21 +1,44 @@
-import { useState } from 'react';
+'use client';
+
+import { useCallback, useState } from 'react';
 
 import type React from 'react';
 
-import { Check, Copy, Download, Loader2, Upload } from 'lucide-react';
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Download,
+  Loader2,
+  Upload,
+  X
+} from 'lucide-react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 
-interface RunPodResponse {
+interface JobStatus {
   id: string;
-  status: string;
+  status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  delayTime?: number;
+  executionTime?: number;
+  workerId?: string;
   output?: {
-    images?: string[];
+    images?: Array<{
+      data: string;
+      file_type: string;
+      format: string;
+    }>;
+    status?: string;
     metadata?: {
       width: number;
       height: number;
@@ -27,45 +50,16 @@ interface RunPodResponse {
     };
   };
   error?: string;
+  createdAt: Date;
+  completedAt?: Date;
 }
 
 export function ComfyUIGenerator() {
   const [workflow, setWorkflow] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState<RunPodResponse | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [jobs, setJobs] = useState<JobStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const pollJobStatus = (jobId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`https://api.runpod.ai/v2/1ogep048h90n35/status/${jobId}`, {
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
-          }
-        });
-
-        if (!res.ok) {
-          throw new Error(`Polling failed: ${res.status}`);
-        }
-
-        const jobData: any = await res.json();
-
-        if (jobData.status === 'COMPLETED') {
-          setResponse(jobData);
-          clearInterval(interval);
-        }
-
-        if (jobData.status === 'FAILED') {
-          setError('Job failed');
-          clearInterval(interval);
-        }
-      } catch (err) {
-        clearInterval(interval);
-        setError(err instanceof Error ? err.message : 'Polling error');
-      }
-    }, 3000); // Poll every 3 seconds
-  };
+  const [copied, setCopied] = useState<string | null>(null);
 
   const validateJSON = (jsonString: string): boolean => {
     try {
@@ -75,6 +69,71 @@ export function ComfyUIGenerator() {
       return false;
     }
   };
+
+  const pollJobStatus = useCallback(async (jobId: string) => {
+    try {
+      // const response = await fetch(`https://api.runpod.ai/v2/1ogep048h90n35/status/${jobId}`, {
+      const response = await fetch(
+        `https://api.runpod.ai/v2/${import.meta.env.VITE_RUNPOD_SERVER_ID}/status/${jobId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
+          }
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to fetch job status: ${response.status}`);
+      }
+      const jobStatus: JobStatus = await response.json();
+
+      setJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job.id === jobId
+            ? {
+                ...job,
+                ...jobStatus,
+                completedAt:
+                  (jobStatus.status === 'COMPLETED' || jobStatus.status === 'FAILED') &&
+                  !job.completedAt
+                    ? new Date()
+                    : job.completedAt
+              }
+            : job
+        )
+      );
+
+      return jobStatus.status;
+    } catch (err) {
+      console.error(`Error polling job ${jobId}:`, err);
+      setJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job.id === jobId
+            ? {
+                ...job,
+                status: 'FAILED',
+                error: 'Failed to poll job status',
+                completedAt: new Date()
+              }
+            : job
+        )
+      );
+      return 'FAILED';
+    }
+  }, []);
+
+  const startPolling = useCallback(
+    (jobId: string) => {
+      const pollInterval = setInterval(async () => {
+        const status = await pollJobStatus(jobId);
+        if (status === 'COMPLETED' || status === 'FAILED') {
+          clearInterval(pollInterval);
+        }
+      }, 10000); // Poll every 10 seconds
+
+      return () => clearInterval(pollInterval);
+    },
+    [pollJobStatus]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,68 +148,112 @@ export function ComfyUIGenerator() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError(null);
-    setResponse(null);
 
     try {
-      const parsedWorkflow = JSON.parse(workflow);
+      const input = JSON.parse(workflow);
 
-      const runpodResponse = await fetch('https://api.runpod.ai/v2/1ogep048h90n35/run', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
-        },
-        body: JSON.stringify({
-          parsedWorkflow
-        })
-      });
+      const response = await fetch(
+        `https://api.runpod.ai/v2/${import.meta.env.VITE_RUNPOD_SERVER_ID}/run`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
+          },
+          body: JSON.stringify(input)
+        }
+      );
 
-      if (!runpodResponse.ok) {
-        throw new Error(`HTTP error! status: ${runpodResponse.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: any = await runpodResponse.json();
-      const jobId = data.id;
-      const initialStatus = data.status;
+      const data = await response.json();
 
-      if (initialStatus === 'IN_QUEUE' || initialStatus === 'IN_PROGRESS') {
-        pollJobStatus(jobId); // 🔁 Start polling
-      } else if (initialStatus === 'COMPLETED') {
-        setResponse(data);
-      } else {
-        setError(`Unexpected status: ${initialStatus}`);
-      }
+      // Add new job to the queue
+      const newJob: JobStatus = {
+        id: data.id,
+        status: data.status,
+        createdAt: new Date()
+      };
+
+      setJobs((prevJobs) => [newJob, ...prevJobs]);
+
+      // Start polling for this job
+      startPolling(data.id);
+
+      // Clear the workflow input
+      setWorkflow('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process workflow');
+      setError(err instanceof Error ? err.message : 'Failed to submit workflow');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const copyToClipboard = async (text: string) => {
+  const copyToClipboard = async (text: string, jobId: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(jobId);
+      setTimeout(() => setCopied(null), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
   };
 
-  const downloadImage = (base64Image: string, filename = 'comfyui-generated-image.png') => {
+  const downloadImage = (base64Image: string, jobId: string, imageIndex = 0, fileType = 'png') => {
     const link = document.createElement('a');
-    link.href = `data:image/png;base64,${base64Image}`;
-    link.download = filename;
+    link.href = `data:image/${fileType};base64,${base64Image}`;
+    link.download = `comfyui-${jobId.slice(0, 8)}-${imageIndex + 1}.${fileType}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  const removeJob = (jobId: string) => {
+    setJobs((prevJobs) => prevJobs.filter((job) => job.id !== jobId));
+  };
+
+  const getStatusIcon = (status: JobStatus['status']) => {
+    switch (status) {
+      case 'IN_QUEUE':
+        return <Clock className='h-4 w-4' />;
+      case 'IN_PROGRESS':
+        return <Loader2 className='h-4 w-4 animate-spin' />;
+      case 'COMPLETED':
+        return <CheckCircle2 className='h-4 w-4' />;
+      case 'FAILED':
+        return <AlertCircle className='h-4 w-4' />;
+    }
+  };
+
+  const getStatusColor = (status: JobStatus['status']) => {
+    switch (status) {
+      case 'IN_QUEUE':
+        return 'secondary';
+      case 'IN_PROGRESS':
+        return 'default';
+      case 'COMPLETED':
+        return 'default';
+      case 'FAILED':
+        return 'destructive';
+    }
+  };
+
+  const formatDuration = (start: Date, end?: Date) => {
+    const endTime = end || new Date();
+    const duration = Math.floor((endTime.getTime() - start.getTime()) / 1000);
+    if (duration < 60) return `${duration}s`;
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    return `${minutes}m ${seconds}s`;
+  };
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4'>
-      <div className='mx-auto max-w-6xl space-y-6'>
+      <div className='mx-auto max-w-7xl space-y-6'>
         <div className='space-y-2 text-center'>
           <h1 className='text-4xl font-bold text-slate-900'>ComfyUI Image Generator</h1>
           <p className='text-slate-600'>
@@ -158,9 +261,9 @@ export function ComfyUIGenerator() {
           </p>
         </div>
 
-        <div className='grid gap-6 lg:grid-cols-2'>
+        <div className='grid gap-6 lg:grid-cols-3'>
           {/* Input Section */}
-          <Card>
+          <Card className='lg:col-span-1'>
             <CardHeader>
               <CardTitle className='flex items-center gap-2'>
                 <Upload className='h-5 w-5' />
@@ -187,16 +290,20 @@ export function ComfyUIGenerator() {
                   </Alert>
                 )}
 
-                <Button type='submit' disabled={isLoading || !workflow.trim()} className='w-full'>
-                  {isLoading ? (
+                <Button
+                  type='submit'
+                  disabled={isSubmitting || !workflow.trim()}
+                  className='w-full'
+                >
+                  {isSubmitting ? (
                     <>
                       <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Processing Workflow...
+                      Submitting...
                     </>
                   ) : (
                     <>
                       <Upload className='mr-2 h-4 w-4' />
-                      Generate Image
+                      Add to Queue
                     </>
                   )}
                 </Button>
@@ -204,126 +311,183 @@ export function ComfyUIGenerator() {
             </CardContent>
           </Card>
 
-          {/* Output Section */}
-          <Card>
+          {/* Job Queue Section */}
+          <Card className='lg:col-span-2'>
             <CardHeader>
-              <CardTitle>Generated Output</CardTitle>
-              <CardDescription>Your generated images and metadata will appear here</CardDescription>
+              <CardTitle className='flex items-center justify-between'>
+                <span>Job Queue ({jobs.length})</span>
+                {jobs.length > 0 && (
+                  <Button variant='outline' size='sm' onClick={() => setJobs([])}>
+                    Clear All
+                  </Button>
+                )}
+              </CardTitle>
+              <CardDescription>Track your generation jobs and view results</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoading && (
-                <div className='flex items-center justify-center py-12'>
-                  <div className='space-y-4 text-center'>
-                    <Loader2 className='mx-auto h-8 w-8 animate-spin text-blue-500' />
-                    <p className='text-slate-600'>Generating your image...</p>
-                  </div>
+              {jobs.length === 0 ? (
+                <div className='py-12 text-center text-slate-500'>
+                  <Upload className='mx-auto mb-4 h-12 w-12 opacity-50' />
+                  <p>No jobs in queue. Submit a workflow to get started.</p>
                 </div>
-              )}
-
-              {response && response.output?.images && (
-                <div className='space-y-6'>
-                  {/* Status Badge */}
-                  <div className='flex items-center gap-2'>
-                    <Badge variant={response.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                      {response.status}
-                    </Badge>
-                    <span className='text-sm text-slate-600'>ID: {response.id}</span>
-                  </div>
-
-                  {/* Generated Images */}
+              ) : (
+                <ScrollArea className='h-[600px] pr-4'>
                   <div className='space-y-4'>
-                    {response.output.images.map((base64Image, index) => (
-                      <div key={index} className='space-y-3'>
-                        <div className='group relative'>
-                          <img
-                            src={`data:image/png;base64,${base64Image}`}
-                            alt={`Generated image ${index + 1}`}
-                            width={512}
-                            height={512}
-                            className='h-auto w-full rounded-lg shadow-lg'
-                            crossOrigin='anonymous'
-                          />
-                          <div className='absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100'>
-                            <div className='flex gap-2'>
-                              <Button
-                                size='sm'
-                                variant='secondary'
-                                onClick={() => copyToClipboard(base64Image)}
+                    {jobs.map((job, index) => (
+                      <Card key={job.id} className='relative'>
+                        <CardHeader className='pb-3'>
+                          <div className='flex items-center justify-between'>
+                            <div className='flex items-center gap-3'>
+                              <Badge
+                                variant={getStatusColor(job.status)}
+                                className='flex items-center gap-1'
                               >
-                                {copied ? (
-                                  <Check className='h-4 w-4' />
-                                ) : (
-                                  <Copy className='h-4 w-4' />
-                                )}
-                              </Button>
+                                {getStatusIcon(job.status)}
+                                {job.status.replace('_', ' ')}
+                              </Badge>
+                              <span className='text-sm text-slate-600'>
+                                ID: {job.id.slice(0, 8)}...
+                              </span>
+                            </div>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-xs text-slate-500'>
+                                {formatDuration(job.createdAt, job.completedAt)}
+                              </span>
                               <Button
+                                variant='ghost'
                                 size='sm'
-                                variant='secondary'
-                                onClick={() => downloadImage(base64Image, `image-${index + 1}.png`)}
+                                onClick={() => removeJob(job.id)}
+                                className='h-6 w-6 p-0'
                               >
-                                <Download className='h-4 w-4' />
+                                <X className='h-3 w-3' />
                               </Button>
                             </div>
                           </div>
-                        </div>
-                      </div>
+
+                          {job.status === 'IN_PROGRESS' && job.delayTime && (
+                            <div className='space-y-2'>
+                              <div className='flex justify-between text-xs text-slate-600'>
+                                <span>Processing...</span>
+                                <span>Worker: {job.workerId?.slice(0, 8)}</span>
+                              </div>
+                              <Progress value={75} className='h-1' />
+                            </div>
+                          )}
+                        </CardHeader>
+
+                        {job.status === 'COMPLETED' && job.output?.images && (
+                          <CardContent className='pt-0'>
+                            <div className='space-y-4'>
+                              {/* Generated Images */}
+                              <div className='grid grid-cols-1 gap-4'>
+                                {job.output.images.map((imageObj, imageIndex) => (
+                                  <div key={imageIndex} className='space-y-2'>
+                                    <div className='group relative'>
+                                      <img
+                                        src={`data:image/${imageObj.file_type};base64,${imageObj.data}`}
+                                        alt={`Generated image ${imageIndex + 1}`}
+                                        className='rounded-lg shadow-sm'
+                                        crossOrigin='anonymous'
+                                        width={512}
+                                        height={512}
+                                        style={{ width: 512, height: 512, objectFit: 'cover' }}
+                                      />
+                                      <div className='absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100'>
+                                        <div className='flex gap-1'>
+                                          <Button
+                                            size='sm'
+                                            variant='secondary'
+                                            onClick={() => copyToClipboard(imageObj.data, job.id)}
+                                            className='h-8 w-8 p-0'
+                                          >
+                                            {copied === job.id ? (
+                                              <Check className='h-3 w-3' />
+                                            ) : (
+                                              <Copy className='h-3 w-3' />
+                                            )}
+                                          </Button>
+                                          <Button
+                                            size='sm'
+                                            variant='secondary'
+                                            onClick={() =>
+                                              downloadImage(
+                                                imageObj.data,
+                                                job.id,
+                                                imageIndex,
+                                                imageObj.file_type
+                                              )
+                                            }
+                                            className='h-8 w-8 p-0'
+                                          >
+                                            <Download className='h-3 w-3' />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Metadata */}
+                              {job.output.metadata && (
+                                <div className='rounded-lg bg-slate-50 p-3'>
+                                  <h4 className='mb-2 text-sm font-medium'>Generation Details</h4>
+                                  <div className='grid grid-cols-3 gap-2 text-xs'>
+                                    <div>
+                                      <span className='text-slate-500'>Size:</span>
+                                      <p>
+                                        {job.output.metadata.width}×{job.output.metadata.height}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <span className='text-slate-500'>Steps:</span>
+                                      <p>{job.output.metadata.steps}</p>
+                                    </div>
+                                    <div>
+                                      <span className='text-slate-500'>CFG:</span>
+                                      <p>{job.output.metadata.cfg_scale}</p>
+                                    </div>
+                                  </div>
+                                  <div className='mt-2 grid grid-cols-2 gap-2 text-xs'>
+                                    <div>
+                                      <span className='text-slate-500'>Execution Time:</span>
+                                      <p>
+                                        {job.executionTime
+                                          ? `${(job.executionTime / 1000).toFixed(1)}s`
+                                          : 'N/A'}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <span className='text-slate-500'>Queue Time:</span>
+                                      <p>
+                                        {job.delayTime
+                                          ? `${(job.delayTime / 1000).toFixed(1)}s`
+                                          : 'N/A'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        )}
+
+                        {job.status === 'FAILED' && (
+                          <CardContent className='pt-0'>
+                            <Alert variant='destructive'>
+                              <AlertCircle className='h-4 w-4' />
+                              <AlertDescription>
+                                {job.error || 'Job failed to complete'}
+                              </AlertDescription>
+                            </Alert>
+                          </CardContent>
+                        )}
+
+                        {index < jobs.length - 1 && <Separator className='mt-4' />}
+                      </Card>
                     ))}
                   </div>
-
-                  {/* Metadata */}
-                  {response.output.metadata && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className='text-lg'>Generation Metadata</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className='grid grid-cols-2 gap-4 text-sm'>
-                          <div>
-                            <span className='font-medium'>Dimensions:</span>
-                            <p className='text-slate-600'>
-                              {response.output.metadata.width} × {response.output.metadata.height}
-                            </p>
-                          </div>
-                          <div>
-                            <span className='font-medium'>Seed:</span>
-                            <p className='text-slate-600'>{response.output.metadata.seed}</p>
-                          </div>
-                          <div>
-                            <span className='font-medium'>Steps:</span>
-                            <p className='text-slate-600'>{response.output.metadata.steps}</p>
-                          </div>
-                          <div>
-                            <span className='font-medium'>CFG Scale:</span>
-                            <p className='text-slate-600'>{response.output.metadata.cfg_scale}</p>
-                          </div>
-                          <div>
-                            <span className='font-medium'>Sampler:</span>
-                            <p className='text-slate-600'>
-                              {response.output.metadata.sampler_name}
-                            </p>
-                          </div>
-                          <div>
-                            <span className='font-medium'>Scheduler:</span>
-                            <p className='text-slate-600'>{response.output.metadata.scheduler}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              )}
-
-              {response && response.error && (
-                <Alert variant='destructive'>
-                  <AlertDescription>{response.error}</AlertDescription>
-                </Alert>
-              )}
-
-              {!isLoading && !response && (
-                <div className='py-12 text-center text-slate-500'>
-                  <Upload className='mx-auto mb-4 h-12 w-12 opacity-50' />
-                  <p>Submit a workflow to see generated images here</p>
-                </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
