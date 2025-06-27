@@ -84,7 +84,7 @@ export function ComfyUIGenerator() {
       if (!response.ok) {
         throw new Error(`Failed to fetch job status: ${response.status}`);
       }
-      const jobStatus: JobStatus = await response.json();
+      const jobStatus: any = await response.json();
 
       setJobs((prevJobs) =>
         prevJobs.map((job) =>
@@ -170,7 +170,7 @@ export function ComfyUIGenerator() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Add new job to the queue
       const newJob: JobStatus = {
