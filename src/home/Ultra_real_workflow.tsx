@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   AlertCircle,
@@ -58,6 +58,16 @@ export function UltraRealismGenerator() {
   const [jobs, setJobs] = useState<JobStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Update current time every second for live duration updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const pollJobStatus = useCallback(async (jobId: string, mode: 'pro' | 'standard') => {
     try {
@@ -232,7 +242,7 @@ export function UltraRealismGenerator() {
   };
 
   const formatDuration = (start: Date, end?: Date) => {
-    const endTime = end || new Date();
+    const endTime = end || new Date(currentTime);
     const duration = Math.floor((endTime.getTime() - start.getTime()) / 1000);
     if (duration < 60) return `${duration}s`;
     const minutes = Math.floor(duration / 60);
