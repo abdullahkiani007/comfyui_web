@@ -330,7 +330,7 @@ export function Upscaler() {
                             <div className='space-y-4'>
                               {/* Generated Images */}
                               <div className='grid grid-cols-1 gap-4'>
-                                {job.output.images.map((imageObj, imageIndex) => (
+                                {job.output.images.map((imageObj: any, imageIndex: any) => (
                                   <div key={imageIndex} className='space-y-2'>
                                     <div className='group relative'>
                                       <img

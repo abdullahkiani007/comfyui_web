@@ -366,9 +366,11 @@ export function UltraRealismGenerator() {
                               </span>
                             </div>
                             <div className='flex items-center gap-2'>
-                              <span className='text-xs text-slate-500'>
-                                {formatDuration(job.createdAt, job.completedAt)}
-                              </span>
+                              {job.status !== 'IN_QUEUE' && (
+                                <span className='text-xs text-slate-500'>
+                                  {formatDuration(job.createdAt, job.completedAt)}
+                                </span>
+                              )}
                               <Button
                                 variant='ghost'
                                 size='sm'
