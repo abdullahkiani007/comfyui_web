@@ -63,7 +63,7 @@ export function UltraRealismGenerator() {
     try {
       const serverId =
         mode === 'pro'
-          ? import.meta.env.VITE_RUNPOD_SERVER_ID_PRO
+          ? import.meta.env.VITE_ULTRA_REAL_PRO
           : import.meta.env.VITE_ULTRA_REAL_STANDARD;
       const response = await fetch(`https://api.runpod.ai/v2/${serverId}/status/${jobId}`, {
         headers: {
@@ -148,7 +148,7 @@ export function UltraRealismGenerator() {
 
       const serverId =
         mode === 'pro'
-          ? import.meta.env.VITE_RUNPOD_SERVER_ID_PRO
+          ? import.meta.env.VITE_ULTRA_REAL_PRO
           : import.meta.env.VITE_ULTRA_REAL_STANDARD;
 
       const response = await fetch(`https://api.runpod.ai/v2/${serverId}/run`, {
