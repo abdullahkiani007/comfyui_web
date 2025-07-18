@@ -8,10 +8,10 @@ const App = () => {
   return (
     <>
       <Helmet>
-        <title>NxtofTemplate</title>
+        <title>CodeAcme test workflow</title>
         <meta
           name='description'
-          content='Boilerplate template designed to quickly bootstrap a React.js Web App, SPA, website or landing page with TypeScript, Shadcn/ui, TailwindCSS, Vite, SWC, ESLint, Husky and much more in just 30 seconds.'
+          content='test codeacme workflow'
         />
         <meta name='keywords' content='template , react , shadcn , husky , react router' />
       </Helmet>

@@ -1,8 +1,4 @@
-'use client';
-
 import { useCallback, useState } from 'react';
-
-import type React from 'react';
 
 import {
   AlertCircle,
@@ -12,7 +8,7 @@ import {
   Copy,
   Download,
   Loader2,
-  Upload,
+  Sparkles,
   X
 } from 'lucide-react';
 
@@ -25,12 +21,11 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { jobTypes } from '@/constants/constants';
-import { useJob } from '@/hooks/use-job';
+
+import BASE_WORKFLOW from '../workflows/ultra_real_workflow.json';
 
 interface JobStatus {
   id: string;
-  jobType?: jobTypes;
   status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   delayTime?: number;
   executionTime?: number;
@@ -57,47 +52,87 @@ interface JobStatus {
   completedAt?: Date;
 }
 
-export function Upscaler() {
-  const [workflow, setWorkflow] = useState('');
+export function UltraRealismGenerator() {
+  const [prompt, setPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [jobs, setJobs] = useState<JobStatus[]>([]);
-  const [pollJobStatus, jobs, addJob, removeJob, clearJobs] = useJob();
+  const [jobs, setJobs] = useState<JobStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const validateJSON = (jsonString: string): boolean => {
+  const pollJobStatus = useCallback(async (jobId: string, mode: 'pro' | 'standard') => {
     try {
-      JSON.parse(jsonString);
-      return true;
-    } catch {
-      return false;
+      const serverId =
+        mode === 'pro'
+          ? import.meta.env.VITE_RUNPOD_SERVER_ID_PRO
+          : import.meta.env.VITE_ULTRA_REAL_STANDARD;
+      const response = await fetch(`https://api.runpod.ai/v2/${serverId}/status/${jobId}`, {
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch job status: ${response.status}`);
+      }
+      const jobStatus: any = await response.json();
+
+      setJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job.id === jobId
+            ? {
+                ...job,
+                ...jobStatus,
+                completedAt:
+                  (jobStatus.status === 'COMPLETED' || jobStatus.status === 'FAILED') &&
+                  !job.completedAt
+                    ? new Date()
+                    : job.completedAt
+              }
+            : job
+        )
+      );
+
+      return jobStatus.status;
+    } catch (err) {
+      console.error(`Error polling job ${jobId}:`, err);
+      setJobs((prevJobs) =>
+        prevJobs.map((job) =>
+          job.id === jobId
+            ? {
+                ...job,
+                status: 'FAILED',
+                error: 'Failed to poll job status',
+                completedAt: new Date()
+              }
+            : job
+        )
+      );
+      return 'FAILED';
     }
-  };
+  }, []);
 
   const startPolling = useCallback(
-    (jobId: string) => {
-      const pollInterval = setInterval(async () => {
-        const status = await pollJobStatus(jobId, import.meta.env.VITE_UPSCALER_STANDARD);
-        if (status === 'COMPLETED' || status === 'FAILED') {
-          clearInterval(pollInterval);
-        }
-      }, 10000); // Poll every 10 seconds
+    (jobId: string, mode: 'pro' | 'standard') => {
+      // Simulate IN_QUEUE for 20 seconds
+      const queueTimeout = setTimeout(() => {
+        const pollInterval = setInterval(async () => {
+          const status = await pollJobStatus(jobId, mode);
+          if (status === 'COMPLETED' || status === 'FAILED') {
+            clearInterval(pollInterval);
+          }
+        }, 10000); // Poll every 10 seconds after initial 20s
+        return () => clearInterval(pollInterval);
+      }, 20000); // 20 seconds delay
 
-      return () => clearInterval(pollInterval);
+      return () => clearTimeout(queueTimeout);
     },
     [pollJobStatus]
   );
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, mode: 'pro' | 'standard') => {
     e.preventDefault();
 
-    if (!workflow.trim()) {
-      setError('Please enter a ComfyUI workflow JSON');
-      return;
-    }
-
-    if (!validateJSON(workflow)) {
-      setError('Invalid JSON format. Please check your workflow.');
+    if (!prompt.trim()) {
+      setError('Please enter a prompt');
       return;
     }
 
@@ -105,19 +140,25 @@ export function Upscaler() {
     setError(null);
 
     try {
-      const input = JSON.parse(workflow);
+      // Inject user prompt into workflow
+      const workflow: any = JSON.parse(JSON.stringify(BASE_WORKFLOW));
+      console.log('base workflow', workflow);
+      workflow.input.workflow['94'].inputs.text = prompt;
+      workflow.input.workflow['106'].inputs.text = prompt;
 
-      const response = await fetch(
-        `https://api.runpod.ai/v2/${import.meta.env.VITE_UPSCALER_STANDARD}/run`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
-          },
-          body: JSON.stringify(input)
-        }
-      );
+      const serverId =
+        mode === 'pro'
+          ? import.meta.env.VITE_RUNPOD_SERVER_ID_PRO
+          : import.meta.env.VITE_ULTRA_REAL_STANDARD;
+
+      const response = await fetch(`https://api.runpod.ai/v2/${serverId}/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_RUNPOD_API_KEY}`
+        },
+        body: JSON.stringify(workflow)
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -125,23 +166,17 @@ export function Upscaler() {
 
       const data: any = await response.json();
 
-      // Add new job to the queue
       const newJob: JobStatus = {
         id: data.id,
-        status: data.status,
-        jobType: jobTypes.upscaler,
+        status: 'IN_QUEUE',
         createdAt: new Date()
       };
 
-      addJob(newJob);
-
-      // Start polling for this job
-      startPolling(data.id);
-
-      // Clear the workflow input
-      setWorkflow('');
+      setJobs((prevJobs) => [newJob, ...prevJobs]);
+      startPolling(data.id, mode);
+      setPrompt('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit workflow');
+      setError(err instanceof Error ? err.message : 'Failed to submit prompt');
     } finally {
       setIsSubmitting(false);
     }
@@ -160,10 +195,14 @@ export function Upscaler() {
   const downloadImage = (base64Image: string, jobId: string, imageIndex = 0, fileType = 'png') => {
     const link = document.createElement('a');
     link.href = `data:image/${fileType};base64,${base64Image}`;
-    link.download = `comfyui-${jobId.slice(0, 8)}-${imageIndex + 1}.${fileType}`;
+    link.download = `ultra-realism-${jobId.slice(0, 8)}-${imageIndex + 1}.${fileType}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const removeJob = (jobId: string) => {
+    setJobs((prevJobs) => prevJobs.filter((job) => job.id !== jobId));
   };
 
   const getStatusIcon = (status: JobStatus['status']) => {
@@ -205,32 +244,29 @@ export function Upscaler() {
     <div className='min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4'>
       <div className='mx-auto max-w-7xl space-y-6'>
         <div className='space-y-2 text-center'>
-          <h1 className='text-4xl font-bold text-slate-900'>ComfyUI Image Generator</h1>
-          <p className='text-slate-600'>
-            Send your ComfyUI workflow to RunPod and generate amazing images
-          </p>
+          <h1 className='text-4xl font-bold text-slate-900'>Ultra Realism Image Generator</h1>
+          <p className='text-slate-600'>Generate ultra-realistic images with a simple prompt</p>
         </div>
 
         <div className='grid gap-6 lg:grid-cols-3'>
-          {/* Input Section */}
           <Card className='lg:col-span-1'>
             <CardHeader>
               <CardTitle className='flex items-center gap-2'>
-                <Upload className='h-5 w-5' />
-                Workflow Input
+                <Sparkles className='h-5 w-5' />
+                Prompt Input
               </CardTitle>
-              <CardDescription>Paste your ComfyUI workflow JSON below</CardDescription>
+              <CardDescription>Enter a prompt to generate an ultra-realistic image</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <form onSubmit={handleSubmit} className='space-y-4'>
+              <form className='space-y-4'>
                 <div className='space-y-2'>
-                  <Label htmlFor='workflow'>ComfyUI Workflow JSON</Label>
+                  <Label htmlFor='prompt'>Image Prompt</Label>
                   <Textarea
-                    id='workflow'
-                    placeholder='{"1": {"inputs": {"text": "a beautiful landscape"}, "class_type": "CLIPTextEncode"}, ...}'
-                    value={workflow}
-                    onChange={(e) => setWorkflow(e.target.value)}
-                    className='min-h-[300px] font-mono text-sm'
+                    id='prompt'
+                    placeholder='A hyper-realistic portrait of a futuristic city at sunset'
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className='min-h-[100px] text-sm'
                   />
                 </div>
 
@@ -240,34 +276,54 @@ export function Upscaler() {
                   </Alert>
                 )}
 
-                <Button
-                  type='submit'
-                  disabled={isSubmitting || !workflow.trim()}
-                  className='w-full'
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className='mr-2 h-4 w-4' />
-                      Add to Queue
-                    </>
-                  )}
-                </Button>
+                <div className='flex gap-4'>
+                  <Button
+                    type='submit'
+                    disabled={isSubmitting || !prompt.trim()}
+                    className='w-full bg-indigo-600 hover:bg-indigo-700'
+                    onClick={(e) => handleSubmit(e, 'pro')}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className='mr-2 h-4 w-4' />
+                        Generate (Pro)
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type='submit'
+                    disabled={isSubmitting || !prompt.trim()}
+                    className='w-full bg-teal-600 hover:bg-teal-700'
+                    onClick={(e) => handleSubmit(e, 'standard')}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className='mr-2 h-4 w-4' />
+                        Generate (Standard)
+                      </>
+                    )}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
 
-          {/* Job Queue Section */}
           <Card className='lg:col-span-2'>
             <CardHeader>
               <CardTitle className='flex items-center justify-between'>
                 <span>Job Queue ({jobs.length})</span>
                 {jobs.length > 0 && (
-                  <Button variant='outline' size='sm' onClick={() => clearJobs(jobTypes.upscaler)}>
+                  <Button variant='outline' size='sm' onClick={() => setJobs([])}>
                     Clear All
                   </Button>
                 )}
@@ -277,8 +333,8 @@ export function Upscaler() {
             <CardContent>
               {jobs.length === 0 ? (
                 <div className='py-12 text-center text-slate-500'>
-                  <Upload className='mx-auto mb-4 h-12 w-12 opacity-50' />
-                  <p>No jobs in queue. Submit a workflow to get started.</p>
+                  <Sparkles className='mx-auto mb-4 h-12 w-12 opacity-50' />
+                  <p>No jobs in queue. Submit a prompt to get started.</p>
                 </div>
               ) : (
                 <ScrollArea className='h-[600px] pr-4'>
@@ -328,7 +384,6 @@ export function Upscaler() {
                         {job.status === 'COMPLETED' && job.output?.images && (
                           <CardContent className='pt-0'>
                             <div className='space-y-4'>
-                              {/* Generated Images */}
                               <div className='grid grid-cols-1 gap-4'>
                                 {job.output.images.map((imageObj, imageIndex) => (
                                   <div key={imageIndex} className='space-y-2'>
@@ -378,7 +433,6 @@ export function Upscaler() {
                                 ))}
                               </div>
 
-                              {/* Metadata */}
                               {job.output.metadata && (
                                 <div className='rounded-lg bg-slate-50 p-3'>
                                   <h4 className='mb-2 text-sm font-medium'>Generation Details</h4>
