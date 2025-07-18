@@ -49,6 +49,7 @@ interface JobStatus {
   };
   error?: string;
   createdAt: Date;
+  processingStartedAt?: Date;
   completedAt?: Date;
 }
 
@@ -91,6 +92,10 @@ export function UltraRealismGenerator() {
             ? {
                 ...job,
                 ...jobStatus,
+                processingStartedAt:
+                  job.status === 'IN_QUEUE' && jobStatus.status === 'IN_PROGRESS' && !job.processingStartedAt
+                    ? new Date()
+                    : job.processingStartedAt,
                 completedAt:
                   (jobStatus.status === 'COMPLETED' || jobStatus.status === 'FAILED') &&
                   !job.completedAt
@@ -250,6 +255,12 @@ export function UltraRealismGenerator() {
     return `${minutes}m ${seconds}s`;
   };
 
+  const getTimerStartTime = (job: JobStatus) => {
+    // Use processingStartedAt if available (for IN_PROGRESS, COMPLETED, FAILED)
+    // Otherwise use createdAt (fallback)
+    return job.processingStartedAt || job.createdAt;
+  };
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4'>
       <div className='mx-auto max-w-7xl space-y-6'>
@@ -368,7 +379,7 @@ export function UltraRealismGenerator() {
                             <div className='flex items-center gap-2'>
                               {job.status !== 'IN_QUEUE' && (
                                 <span className='text-xs text-slate-500'>
-                                  {formatDuration(job.createdAt, job.completedAt)}
+                                  {formatDuration(getTimerStartTime(job), job.completedAt)}
                                 </span>
                               )}
                               <Button
