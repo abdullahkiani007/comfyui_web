@@ -93,7 +93,9 @@ export function UltraRealismGenerator() {
                 ...job,
                 ...jobStatus,
                 processingStartedAt:
-                  job.status === 'IN_QUEUE' && jobStatus.status === 'IN_PROGRESS' && !job.processingStartedAt
+                  job.status === 'IN_QUEUE' &&
+                  jobStatus.status === 'IN_PROGRESS' &&
+                  !job.processingStartedAt
                     ? new Date()
                     : job.processingStartedAt,
                 completedAt:
