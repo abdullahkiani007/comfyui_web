@@ -16,10 +16,15 @@ export const NavLinks = [
   {
     name: 'Ultra Realism',
     href: PATHS.ULTRA_REALISM
+  },
+  {
+    name: 'MultiTalk',
+    href: '/multi-talk'
   }
 ];
 
 export enum jobTypes {
   'upscaler',
-  'ultra_realism'
+  'ultra_realism',
+  'multi_talk'
 }

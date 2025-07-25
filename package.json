@@ -21,6 +21,7 @@
     "prettier": "prettier --write **/**/*.{html,css,scss,js,cjs,mjs,ts,tsx}"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.726.1",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
