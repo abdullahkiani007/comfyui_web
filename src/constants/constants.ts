@@ -20,11 +20,16 @@ export const NavLinks = [
   {
     name: 'MultiTalk',
     href: '/multi-talk'
+  },
+  {
+    name: 'HiDream',
+    href: 'hidream'
   }
 ];
 
 export enum jobTypes {
   'upscaler',
   'ultra_realism',
-  'multi_talk'
+  'multi_talk',
+  'hidream'
 }
