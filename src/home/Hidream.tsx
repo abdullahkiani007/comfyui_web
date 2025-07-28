@@ -36,15 +36,6 @@ import { uploadFileToS3, UploadProgress } from '@/services/s3Upload.service';
 
 import BASE_WORKFLOW from '../workflows/hidream_workflow.json';
 
-interface MultiTalkFormData {
-  prompt: string;
-  imageUrl: string;
-  steps: number;
-  audioUrl: string;
-  imageFile: File | null;
-  audioFile: File | null;
-}
-
 interface UploadState {
   isUploading: boolean;
   progress: number;
@@ -415,8 +406,8 @@ export function Hidream() {
     <div className='min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4'>
       <div className='mx-auto max-w-7xl space-y-6'>
         <div className='space-y-2 text-center'>
-          <h1 className='text-4xl font-bold text-slate-900'>MultiTalk Generator</h1>
-          <p className='text-slate-600'>Generate talking avatars with audio and image inputs</p>
+          <h1 className='text-4xl font-bold text-slate-900'>HiDream Image Editor</h1>
+          <p className='text-slate-600'>Edit Images using HiDream</p>
         </div>
 
         <div className='grid gap-6 lg:grid-cols-3'>
@@ -426,7 +417,7 @@ export function Hidream() {
                 <Sparkles className='h-5 w-5' />
                 Input Parameters
               </CardTitle>
-              <CardDescription>Configure your talking avatar generation</CardDescription>
+              <CardDescription>Configure your image editing</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
               <form className='space-y-4'>
