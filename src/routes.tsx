@@ -8,6 +8,7 @@ import { Upscaler } from './home/ComfyUIGenerator';
 import { Home } from './home/home';
 import { Multitalk } from './home/MultiTalk';
 import { UltraRealismGenerator } from './home/Ultra_real_workflow';
+import { Wan22 } from './home/Wan22';
 import RootLayout from './root-layout';
 
 export const AppRoutes = () => {
@@ -19,6 +20,7 @@ export const AppRoutes = () => {
           <Route path={PATHS.UPSCALE} element={<Upscaler />} />
           <Route path={PATHS.ULTRA_REALISM} element={<UltraRealismGenerator />} />
           <Route path='/multi-talk' element={<Multitalk />} />
+          <Route path='/wan22' element={<Wan22 />} />
         </Route>
 
         <Route path='*' element={<h1>Not Found</h1>} />

@@ -40,6 +40,14 @@ export function Home() {
             <Sparkles className='h-6 w-6' />
             Multi Talk
           </Button>
+
+          <Button
+            className='text-white flex items-center gap-2 rounded-2xl bg-red-600 px-8 py-6 text-lg shadow-lg transition-transform hover:scale-105 hover:bg-green-700'
+            onClick={() => navigate('/wan22')}
+          >
+            <Sparkles className='h-6 w-6' />
+            Wan2.2
+          </Button>
         </div>
       </div>
     </div>
