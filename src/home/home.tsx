@@ -42,6 +42,14 @@ export function Home() {
           </Button>
 
           <Button
+            className='text-white flex items-center gap-2 rounded-2xl bg-orange-600 px-8 py-6 text-lg shadow-lg transition-transform hover:scale-105 hover:bg-green-700'
+            onClick={() => navigate('/hidream')}
+          >
+            <ImagePlus className='h-6 w-6' />
+            HiDream
+          </Button>
+
+          <Button
             className='text-white flex items-center gap-2 rounded-2xl bg-red-600 px-8 py-6 text-lg shadow-lg transition-transform hover:scale-105 hover:bg-green-700'
             onClick={() => navigate('/wan22')}
           >

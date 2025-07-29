@@ -1,0 +1,238 @@
+{
+
+    "input": {
+      "uid": "test_input",
+      "customModles":[],
+      "customNodes":[],
+    "images": [{
+      "name": "mitchell-luo-ymo_yC_N_2o-unsplash.jpg",
+      "image": "base64: /9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYa"
+    }],
+
+
+  "workflow":
+{
+  "6": {
+    "inputs": {
+      "text": "Let the guy put on black rayban glasses full of a sense of fashion,keep it realistic, with  ultra-realism.",
+      "clip": [
+        "42",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "low quality, blurry, distorted",
+      "clip": [
+        "42",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "54",
+        0
+      ],
+      "vae": [
+        "43",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "13": {
+    "inputs": {
+      "image": "erik-lucatero-d2MSDujJl2g-unsplash.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "41": {
+    "inputs": {
+      "unet_name": "hidream_e1_full_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "42": {
+    "inputs": {
+      "clip_name1": "clip_g_hidream.safetensors",
+      "clip_name2": "clip_l_hidream.safetensors",
+      "clip_name3": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "clip_name4": "llama_3.1_8b_instruct_fp8_scaled.safetensors"
+    },
+    "class_type": "QuadrupleCLIPLoader",
+    "_meta": {
+      "title": "QuadrupleCLIPLoader"
+    }
+  },
+  "43": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "44": {
+    "inputs": {
+      "upscale_method": "bilinear",
+      "width": 768,
+      "height": 768,
+      "crop": "center",
+      "image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "ImageScale",
+    "_meta": {
+      "title": "Upscale Image"
+    }
+  },
+  "46": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "47": {
+    "inputs": {
+      "noise_seed": 1124034976480715
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "49": {
+    "inputs": {
+      "scheduler": "normal",
+      "steps": 28,
+      "denoise": 1,
+      "model": [
+        "41",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "52": {
+    "inputs": {
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "vae": [
+        "43",
+        0
+      ],
+      "pixels": [
+        "44",
+        0
+      ]
+    },
+    "class_type": "InstructPixToPixConditioning",
+    "_meta": {
+      "title": "InstructPixToPixConditioning"
+    }
+  },
+  "53": {
+    "inputs": {
+      "cfg_conds": 5,
+      "cfg_cond2_negative": 2,
+      "style": "regular",
+      "model": [
+        "41",
+        0
+      ],
+      "cond1": [
+        "52",
+        0
+      ],
+      "cond2": [
+        "52",
+        1
+      ],
+      "negative": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "DualCFGGuider",
+    "_meta": {
+      "title": "DualCFGGuider"
+    }
+  },
+  "54": {
+    "inputs": {
+      "noise": [
+        "47",
+        0
+      ],
+      "guider": [
+        "53",
+        0
+      ],
+      "sampler": [
+        "46",
+        0
+      ],
+      "sigmas": [
+        "49",
+        0
+      ],
+      "latent_image": [
+        "52",
+        2
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  }
+}}}
