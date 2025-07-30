@@ -41,6 +41,7 @@ interface MultiTalkFormData {
   imageUrl: string;
   steps: number;
   audioUrl: string;
+  mode: 'clip' | 'stream' | 'clip';
   imageFile: File | null;
   audioFile: File | null;
 }
@@ -87,6 +88,7 @@ export function Multitalk() {
     imageUrl: '',
     steps: 20,
     audioUrl: '',
+    mode: 'clip',
     imageFile: null,
     audioFile: null
   });
@@ -229,6 +231,7 @@ export function Multitalk() {
           prompt: formData.prompt,
           cond_image: formData.imageUrl,
           steps: formData.steps,
+          mode: formData.mode || 'clip',
           num_gpus: 2,
           cond_audio: {
             person1: formData.audioUrl
@@ -553,6 +556,31 @@ export function Multitalk() {
                           className='hover:bg-gray-100'
                         >
                           {step} steps
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className='space-y-2'>
+                  <Label htmlFor='steps'>Mode</Label>
+                  <Select
+                    value={formData.mode}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, mode: value as 'clip' | 'stream' })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className='bg-white-50'>
+                      {['clip', 'stream'].map((step) => (
+                        <SelectItem
+                          key={step}
+                          value={step.toString()}
+                          className='hover:bg-gray-100'
+                        >
+                          {step}
                         </SelectItem>
                       ))}
                     </SelectContent>

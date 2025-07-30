@@ -77,7 +77,7 @@ export function Wan22() {
     imageUrl: '',
     imageFile: null,
     size: '1280*720',
-    num_gpus: 2
+    num_gpus: 4
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jobs, setJobs] = useState<JobStatus[]>([]);
@@ -205,7 +205,7 @@ export function Wan22() {
           prompt: formData.prompt,
           task: formData.task,
           size: formData.size,
-          num_gpus: formData.num_gpus
+          num_gpus: 4 // Use 4 GPUs as default
         },
         id: `wan22-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
       };
@@ -507,7 +507,7 @@ export function Wan22() {
                   </Select>
                 </div>
 
-                <div className='space-y-2'>
+                {/* <div className='space-y-2'>
                   <Label htmlFor='gpus'>Number of GPUs</Label>
                   <Select
                     value={formData.num_gpus.toString()}
@@ -526,7 +526,7 @@ export function Wan22() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </div> */}
 
                 {error && (
                   <Alert variant='destructive'>
