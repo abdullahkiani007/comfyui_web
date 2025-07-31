@@ -41,7 +41,7 @@ interface MultiTalkFormData {
   imageUrl: string;
   steps: number;
   audioUrl: string;
-  mode: 'clip' | 'stream' | 'clip';
+  mode: 'clip' | 'streaming' | 'clip';
   imageFile: File | null;
   audioFile: File | null;
 }
@@ -567,14 +567,14 @@ export function Multitalk() {
                   <Select
                     value={formData.mode}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, mode: value as 'clip' | 'stream' })
+                      setFormData({ ...formData, mode: value as 'clip' | 'streaming' })
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className='bg-white-50'>
-                      {['clip', 'stream'].map((step) => (
+                      {['clip', 'streaming'].map((step) => (
                         <SelectItem
                           key={step}
                           value={step.toString()}
