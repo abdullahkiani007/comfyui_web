@@ -161,7 +161,6 @@ export function UltraRealismGenerator() {
       const workflow: any = JSON.parse(JSON.stringify(BASE_WORKFLOW));
       console.log('base workflow', workflow);
       workflow.input.workflow['94'].inputs.text = prompt;
-      workflow.input.workflow['106'].inputs.text = prompt;
 
       const serverId =
         mode === 'pro'
