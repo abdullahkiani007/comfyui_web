@@ -1,0 +1,246 @@
+{
+  "84": {
+    "inputs": {
+      "unet_name": "flux1-krea-dev.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "85": {
+    "inputs": {
+      "noise_seed": 123169969974844
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "86": {
+    "inputs": {
+      "sampler_name": "dpmpp_2m_sde"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "89": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "90": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "t5xxl_fp16.safetensors",
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "91": {
+    "inputs": {
+      "width": 768,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "92": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "ultra_real_lora.safetensors",
+        "strength": 0.6
+      },
+      "lora_2": {
+        "on": true,
+        "lora": "iphone_lora.safetensors",
+        "strength": 0.15
+      },
+      "lora_3": {
+        "on": true,
+        "lora": "realism_amplifier.safetensors",
+        "strength": 0.2
+      },
+      "lora_4": {
+        "on": true,
+        "lora": "35mm_joycap.safetensors",
+        "strength": 0.2
+      },
+      "lora_5": {
+        "on": true,
+        "lora": "hands_detailer.safetensors",
+        "strength": 0.1
+      },
+      "lora_6": {
+        "on": true,
+        "lora": "flux_lora.safetensors",
+        "strength": 0.1
+      },
+      "lora_7": {
+        "on": true,
+        "lora": "face_detailer.safetensors",
+        "strength": 0.2
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "84",
+        0
+      ],
+      "clip": [
+        "90",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "93": {
+    "inputs": {
+      "max_shift": 1.1500000000000001,
+      "base_shift": 0.5000000000000001,
+      "width": 768,
+      "height": 1024,
+      "model": [
+        "92",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingFlux",
+    "_meta": {
+      "title": "ModelSamplingFlux"
+    }
+  },
+  "94": {
+    "inputs": {
+      "text": "Marquee bulbs burst champagne sparkles onto his slick pompadour and ivory shawl-collar dinner jacket. A jet satin bow tie hugs throat; peak lapel picks up gold reflections from the zig-zag brass sconce at frame edge. Bokeh bulbs smear into comet trails as subtle lens haze diffuses theatrical smoke drifting behind. He fixes calm eyes on a distant stage door—old-Hollywood grandeur, timeless hush beneath city glitter.",
+      "clip": [
+        "92",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "95": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": 28,
+      "denoise": 1,
+      "model": [
+        "93",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "96": {
+    "inputs": {
+      "guidance": 3.5,
+      "conditioning": [
+        "94",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "97": {
+    "inputs": {
+      "model": [
+        "93",
+        0
+      ],
+      "conditioning": [
+        "96",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "98": {
+    "inputs": {
+      "noise": [
+        "85",
+        0
+      ],
+      "guider": [
+        "97",
+        0
+      ],
+      "sampler": [
+        "86",
+        0
+      ],
+      "sigmas": [
+        "95",
+        0
+      ],
+      "latent_image": [
+        "91",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "99": {
+    "inputs": {
+      "samples": [
+        "98",
+        0
+      ],
+      "vae": [
+        "89",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "100": {
+    "inputs": {
+      "images": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  }
+}
