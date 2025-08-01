@@ -1,4 +1,10 @@
 {
+    "input": {
+      "uid": "test_input",
+      "customModles":[],
+      "customNodes":[],
+    "images": [],
+    "workflow":{
   "84": {
     "inputs": {
       "unet_name": "flux1-krea-dev.safetensors",
@@ -242,5 +248,20 @@
     "_meta": {
       "title": "Preview Image"
     }
+  },
+  "117": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "99",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
   }
+  }
+}
 }
