@@ -22,7 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 
-import BASE_WORKFLOW from '../workflows/ultra_real_workflow.json';
+import BASE_WORKFLOW from '../workflows/krea_api.json';
 
 interface JobStatus {
   id: string;
